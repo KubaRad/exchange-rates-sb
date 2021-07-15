@@ -26,7 +26,6 @@ import java.util.List;
 public class DailyRates {
     @Id
     @Column(name = "rates_date")
-    @Temporal(TemporalType.DATE)
     @NotNull
     private LocalDate ratesDate;
 

@@ -1,4 +1,4 @@
-package eu.radlinski.playground.exchangerates.application;
+package eu.radlinski.playground.exchangerates;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

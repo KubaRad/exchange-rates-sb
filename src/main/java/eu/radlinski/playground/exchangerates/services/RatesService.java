@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Service
 public class RatesService {
 
-    private DailyRatesRepository ratesFacade;
+    private final DailyRatesRepository ratesFacade;
 
     @Autowired
     public RatesService(DailyRatesRepository ratesFacade) {
