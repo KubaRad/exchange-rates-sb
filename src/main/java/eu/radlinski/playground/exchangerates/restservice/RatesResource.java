@@ -4,6 +4,12 @@ package eu.radlinski.playground.exchangerates.restservice;
 import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.services.RatesOutput;
 import eu.radlinski.playground.exchangerates.services.RatesService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -35,7 +41,48 @@ public class RatesResource {
     }
 
     @GetMapping("/{selectedDate}")
-    public RatesOutput getRatesForDate(@PathVariable(value = "selectedDate") LocalDate selectedDate, @RequestParam(value = "targetCurrency", required = false) CurrencyType targetCurrency){
+    @ApiResponses(
+            value = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Data are present in storage, the return value is composition of rates for stored currencies. When 'targetCurrency' parameter is used object contains only rate for given currency.",
+                            content = {
+                                    @Content(mediaType = "application/json",
+                                            schema = @Schema(implementation = RatesOutput.class))
+                            }
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "The data for specified date are not stored.",
+                            content = @Content(mediaType = "")
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Problem with interpreting parameters. The date format is invalid or currency symbol is unknown/or not stored.",
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorDescription.class))
+                    )
+            }
+    )
+    @Operation(
+            summary = "Rates data for specified date",
+            description = "Retrieves data from storage. Date of rates is specified as path parameter, rates could be limited to specified currency using 'targetCurrency' parameter."
+    )
+
+    public RatesOutput getRatesForDate(
+            @Parameter(
+                    description = "Date (day) for which the data are retrieved. Use yyyy-MM-dd format. Actually only 1st day of month is stored (so effectively the format is yyyy-MM-01).",
+                    required = true,
+                    schema=@Schema(implementation = LocalDate.class)
+            )
+            @PathVariable(value = "selectedDate") LocalDate selectedDate,
+            @Parameter(
+                    description = "Currency code to limit output currencies",
+                    required = false,
+                    schema=@Schema(implementation = CurrencyType.class, enumAsRef = true),
+                    example = "selectedCurrency=USD"
+            )
+            @RequestParam(value = "targetCurrency", required = false) CurrencyType targetCurrency){
         if(targetCurrency == null){
             return ratesService.ratesForDate(selectedDate)
                     .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, null, null));
@@ -49,7 +96,56 @@ public class RatesResource {
     }
 
     @GetMapping()
-    public List<RatesOutput> getRatesForDates(@RequestParam(value = "startDate", required = false)LocalDate startDate, @RequestParam(value = "endDate", required = false) LocalDate endDate, @RequestParam(value = "targetCurrency", required = false) CurrencyType targetCurrency){
+    @ApiResponses(
+            value = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "List of daily records for last year or in specified range. " +
+                                    "When 'targetCurrency' parameter is used record contains only rate " +
+                                    "for given currency. If there is no data in storage or in given range " +
+                                    "the empty list is returned.",
+                            content = {
+                                    @Content(mediaType = "application/json",
+                                            schema = @Schema(implementation = RatesOutput.class))
+                            }
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Problem with interpreting parameters. The date format is invalid or currency symbol is unknown/or not stored.",
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorDescription.class))
+                    )
+            }
+    )
+    @Operation(
+            summary = "List of exchange rates",
+            description = "Retrieves available data from storage. Only last year is returned by default. " +
+                    "The dates range could be expanded/limited using 'startDate' and 'endDate' parameters. " +
+                    "Rates could be limited to specified currency using 'targetCurrency' parameter. When " +
+                    "the date parameters are used both of them must be specified."
+    )
+    public List<RatesOutput> getRatesForDates(
+            @Parameter(
+                    description = "Start date for requested range. Use yyyy-MM-dd format.",
+                    required = false,
+                    schema=@Schema(implementation = LocalDate.class),
+                    example = "startDate=2020-09-13"
+            )
+            @RequestParam(value = "startDate", required = false)LocalDate startDate,
+            @Parameter(
+                    description = "End date for requested range. Use yyyy-MM-dd format.",
+                    required = false,
+                    schema=@Schema(implementation = LocalDate.class),
+                    example = "endDate=2021-01-18"
+            )
+            @RequestParam(value = "endDate", required = false) LocalDate endDate,
+            @Parameter(
+                    description = "Currency code to limit output currencies",
+                    required = false,
+                    schema=@Schema(implementation = CurrencyType.class, enumAsRef = true),
+                    example = "selectedCurrency=USD"
+            )
+            @RequestParam(value = "targetCurrency", required = false) CurrencyType targetCurrency){
 
         if(startDate == null && endDate == null && targetCurrency == null){
             return ratesService.lastYearRates();

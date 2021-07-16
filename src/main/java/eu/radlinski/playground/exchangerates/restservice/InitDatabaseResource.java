@@ -6,6 +6,11 @@ import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.services.DateTools;
 import eu.radlinski.playground.exchangerates.services.RatesOutput;
 import eu.radlinski.playground.exchangerates.services.RatesStorageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,14 +40,32 @@ public class InitDatabaseResource {
         this.ratesStorageService = ratesStorageService;
     }
 
-    @GetMapping("/test")
-    public String initDb4Tests(){
-        ratesStorageService.storeTestData();
-        return "OK";
-    }
-
 
     @GetMapping()
+    @ApiResponses(
+        value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "Data are succesfuly downloaded and stored",
+                        content = {
+                                @Content(mediaType = "application/json",
+                                schema = @Schema(implementation = InitDatabaseResource.ImportInfo.class))
+                        }
+                ),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "Problem with connection to exchangeratesapi.io serwer or internal processing problem. Detailed info in json object",
+                        content = {
+                                @Content(mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorDescription.class))
+                        }
+                )
+        }
+    )
+    @Operation(
+            summary = "Init database using data retrieved from exchangeratesapi.io API",
+            description = "Connect to exchange rates API and download the data for last year. According to limitations only one day for month is loaded. Data are stored in service datastore. ")
+
     public ImportInfo initDb(){
         LocalDateTime startTime = LocalDateTime.now();
         List<RatesOutput> rates = new ArrayList<>();
