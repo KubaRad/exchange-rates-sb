@@ -25,15 +25,20 @@ public class DateTools {
     }
 
     public static LocalDate firstDayOfMonthNow(){
-        return firstDayOfMonth(LocalDate.now());
+        LocalDate now = LocalDate.now();
+        /*
+         * According to exchangeratesapi.io restrictions the data for the current day isn't accessible
+         * so if we call function on 1st day we have to 'move' to the previous month to get whole previous year
+         */
+        return now.getDayOfMonth() > 1 ? firstDayOfMonth(now) : firstDayOfMonth(now.minusMonths(1).plusDays(1));
     }
 
-    public static List<LocalDate> generateLastYearFirstDays(LocalDate date){
+    public static List<LocalDate> generateLastYearFirstDays(final LocalDate date){
         if(date == null) {
             return Collections.emptyList();
         }
         List<LocalDate> result = new ArrayList<>(12);
-        LocalDate movingDate = firstDayOfMonth(date);
+        LocalDate movingDate = date.getDayOfMonth() > 1 ? firstDayOfMonth(date) : date;
         for(int i = 0; i < 12; i++){
             result.add(movingDate);
             movingDate = movingDate.minusMonths(1);
@@ -44,6 +49,7 @@ public class DateTools {
     }
 
     public static List<LocalDate> generateLastYearFirstDaysForNow(){
-        return generateLastYearFirstDays(LocalDate.now());
+
+        return generateLastYearFirstDays(firstDayOfMonth(LocalDate.now()));
     }
 }

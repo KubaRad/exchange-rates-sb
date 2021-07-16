@@ -1,10 +1,8 @@
 package eu.radlinski.playground.exchangerates.services;
 
-import eu.radlinski.playground.exchangerates.model.CurrencyRate;
 import eu.radlinski.playground.exchangerates.model.CurrencyType;
-import eu.radlinski.playground.exchangerates.model.DailyRates;
 import eu.radlinski.playground.exchangerates.repository.DailyRatesRepository;
-import eu.radlinski.playground.exchangerates.tools.DatabaseContentCreator;
+import eu.radlinski.playground.exchangerates.tools.RatesOutputContentCreator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +16,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(MockitoExtension.class)
 class RatesServiceTest {
 
-    private List<DailyRates> dailyRatesDb;
+    private List<RatesOutput> dailyRatesDb;
     private final Random rand = new Random();
 
     @Mock
@@ -40,17 +37,17 @@ class RatesServiceTest {
 
     @BeforeEach
     void init(){
-        dailyRatesDb = DatabaseContentCreator.provideDailyRatesDb(LocalDate.now());
+        dailyRatesDb = RatesOutputContentCreator.provideRatesOutputDb(LocalDate.now());
     }
 
 
     @Test
     void lastYearRates_all() {
         LocalDate oneYearAgo  =DateTools.firstDayOfMonth(LocalDate.now()).minusYears(1);
-        List<DailyRates> lastYearDailyRates = dailyRatesDb.stream()
-                .filter(dr -> dr.getRatesDate().isAfter(oneYearAgo))
+        List<RatesOutput> lastYearDailyRates = dailyRatesDb.stream()
+                .filter(dr -> dr.getDate().isAfter(oneYearAgo))
                 .collect(Collectors.toList());
-        Mockito.when(dailyRatesFacade.findRatesAfterDate(oneYearAgo)).thenReturn(lastYearDailyRates);
+        Mockito.when(dailyRatesFacade.findAllByRateDateAfter(oneYearAgo)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(lastYearDailyRates));
         List<RatesOutput> ratesOutputList = ratesService.lastYearRates();
         assertNotNull(ratesOutputList);
         compareRatesLists(lastYearDailyRates, ratesOutputList);
@@ -61,10 +58,10 @@ class RatesServiceTest {
     @Test
     void lastYearRates_with_valid_currency() {
         LocalDate oneYearAgo = DateTools.firstDayOfMonth(LocalDate.now()).minusYears(1);
-        List<DailyRates> lastYearDailyRates = dailyRatesDb.stream()
-                .filter(dr -> dr.getRatesDate().isAfter(oneYearAgo))
+        List<RatesOutput> lastYearDailyRates = dailyRatesDb.stream()
+                .filter(dr -> dr.getDate().isAfter(oneYearAgo))
                 .collect(Collectors.toList());
-        Mockito.when(dailyRatesFacade.findRatesAfterDate(oneYearAgo)).thenReturn(lastYearDailyRates);
+        Mockito.when(dailyRatesFacade.findAllByRateDateAfter(oneYearAgo)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(lastYearDailyRates));
         CurrencyType expectedCurrency = CurrencyType.GBP;
         List<RatesOutput> ratesOutputList = ratesService.lastYearRates(expectedCurrency);
         assertNotNull(ratesOutputList);
@@ -75,10 +72,10 @@ class RatesServiceTest {
     @Test
     void lastYearRates_with_invalid_currency() {
         LocalDate oneYearAgo = DateTools.firstDayOfMonth(LocalDate.now()).minusYears(1);
-        List<DailyRates> lastYearDailyRates = dailyRatesDb.stream()
-                .filter(dr -> dr.getRatesDate().isAfter(oneYearAgo))
+        List<RatesOutput> lastYearDailyRates = dailyRatesDb.stream()
+                .filter(dr -> dr.getDate().isAfter(oneYearAgo))
                 .collect(Collectors.toList());
-        Mockito.when(dailyRatesFacade.findRatesAfterDate(oneYearAgo)).thenReturn(lastYearDailyRates);
+        Mockito.when(dailyRatesFacade.findAllByRateDateAfter(oneYearAgo)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(lastYearDailyRates));
         CurrencyType expectedCurrency = CurrencyType.PLN;
         List<RatesOutput> ratesOutputList = ratesService.lastYearRates(expectedCurrency);
         assertNotNull(ratesOutputList);
@@ -88,12 +85,13 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_valid_date(){
-        DailyRates selectedRates = dailyRatesDb.get(random(0,11));
-        Mockito.when(dailyRatesFacade.findByRatesDate(selectedRates.getRatesDate())).thenReturn(Optional.of(selectedRates));
-        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.getRatesDate());
+        int i = random(0,11);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(i, i+1);
+        Mockito.when(dailyRatesFacade.findByRateDate(selectedRates.get(0).getDate())).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
+        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.get(0).getDate());
         assertNotNull(result);
         assertTrue(result.isPresent());
-        compareRatesObjects(selectedRates, result.get(), null);
+        compareRatesObjects(selectedRates.get(0), result.get(), null);
     }
 
     @Test
@@ -105,8 +103,8 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_out_of_range_date(){
-        LocalDate invalidDate = dailyRatesDb.stream().map(DailyRates::getRatesDate).max(LocalDate::compareTo).orElse(LocalDate.MIN);
-        Mockito.when(dailyRatesFacade.findByRatesDate(invalidDate)).thenReturn(Optional.empty());
+        LocalDate invalidDate = dailyRatesDb.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(LocalDate.MIN);
+        Mockito.when(dailyRatesFacade.findByRateDate(invalidDate)).thenReturn(Collections.emptyList());
         Optional<RatesOutput> result = ratesService.ratesForDate(invalidDate);
         assertNotNull(result);
         assertFalse(result.isPresent());
@@ -114,43 +112,46 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_valid_date_valid_currency(){
-        DailyRates selectedRates = dailyRatesDb.get(random(0,11));
+        int i = random(0,11);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(i, i+1);
         CurrencyType validCurrency = CurrencyType.USD;
-        Mockito.when(dailyRatesFacade.findByRatesDate(selectedRates.getRatesDate())).thenReturn(Optional.of(selectedRates));
-        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.getRatesDate(), validCurrency);
+        Mockito.when(dailyRatesFacade.findByRateDate(selectedRates.get(0).getDate())).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
+        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.get(0).getDate(), validCurrency);
         assertNotNull(result);
         assertTrue(result.isPresent());
-        compareRatesObjects(selectedRates, result.get(), validCurrency);
+        compareRatesObjects(selectedRates.get(0), result.get(), validCurrency);
     }
 
     @Test
     void ratesForDate_valid_date_invalid_currency(){
-        DailyRates selectedRates = dailyRatesDb.get(random(0,11));
+        int i = random(0,11);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(i, i+1);
         CurrencyType invalidCurrency = CurrencyType.PLN;
-        Mockito.when(dailyRatesFacade.findByRatesDate(selectedRates.getRatesDate())).thenReturn(Optional.of(selectedRates));
-        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.getRatesDate(), invalidCurrency);
+        Mockito.when(dailyRatesFacade.findByRateDate(selectedRates.get(0).getDate())).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
+        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.get(0).getDate(), invalidCurrency);
         assertNotNull(result);
         assertFalse(result.isPresent());
     }
 
     @Test
     void ratesForDate_valid_date_null_currency(){
-        DailyRates selectedRates = dailyRatesDb.get(random(0,11));
+        int i = random(0,11);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(i, i+1);
         CurrencyType invalidCurrency = null;
-        Mockito.when(dailyRatesFacade.findByRatesDate(selectedRates.getRatesDate())).thenReturn(Optional.of(selectedRates));
-        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.getRatesDate(), invalidCurrency);
+        Mockito.when(dailyRatesFacade.findByRateDate(selectedRates.get(0).getDate())).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
+        Optional<RatesOutput> result = ratesService.ratesForDate(selectedRates.get(0).getDate(), invalidCurrency);
         assertNotNull(result);
         assertFalse(result.isPresent());
     }
 
     @Test
     void ratesForDate_valid_dates(){
-        List<DailyRates> selectedRates = dailyRatesDb.subList(3,8);
-        LocalDate startDate = selectedRates.stream().map(DailyRates::getRatesDate).min(LocalDate::compareTo).orElse(null);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(3,8);
+        LocalDate startDate = selectedRates.stream().map(RatesOutput::getDate).min(LocalDate::compareTo).orElse(null);
         assertNotNull(startDate);
-        LocalDate endDate = selectedRates.stream().map(DailyRates::getRatesDate).max(LocalDate::compareTo).orElse(null);
+        LocalDate endDate = selectedRates.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(null);
         assertNotNull(endDate);
-        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(selectedRates);
+        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
         List<RatesOutput> ratesOutputList = ratesService.ratesForDate(startDate, endDate);
         assertNotNull(ratesOutputList);
         compareRatesLists(selectedRates, ratesOutputList);
@@ -158,13 +159,13 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_valid_dates_valid_currency(){
-        List<DailyRates> selectedRates = dailyRatesDb.subList(3,8);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(3,8);
         CurrencyType validCurrency = CurrencyType.USD;
-        LocalDate startDate = selectedRates.stream().map(DailyRates::getRatesDate).min(LocalDate::compareTo).orElse(null);
+        LocalDate startDate = selectedRates.stream().map(RatesOutput::getDate).min(LocalDate::compareTo).orElse(null);
         assertNotNull(startDate);
-        LocalDate endDate = selectedRates.stream().map(DailyRates::getRatesDate).max(LocalDate::compareTo).orElse(null);
+        LocalDate endDate = selectedRates.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(null);
         assertNotNull(endDate);
-        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(selectedRates);
+        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
         List<RatesOutput> ratesOutputList = ratesService.ratesForDate(startDate, endDate, validCurrency);
         assertNotNull(ratesOutputList);
         compareRatesLists(selectedRates, ratesOutputList, validCurrency);
@@ -172,12 +173,12 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_valid_dates_invalid_currency(){
-        List<DailyRates> selectedRates = dailyRatesDb.subList(3,8);
-        LocalDate startDate = selectedRates.stream().map(DailyRates::getRatesDate).min(LocalDate::compareTo).orElse(null);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(3,8);
+        LocalDate startDate = selectedRates.stream().map(RatesOutput::getDate).min(LocalDate::compareTo).orElse(null);
         assertNotNull(startDate);
-        LocalDate endDate = selectedRates.stream().map(DailyRates::getRatesDate).max(LocalDate::compareTo).orElse(null);
+        LocalDate endDate = selectedRates.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(null);
         assertNotNull(endDate);
-        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(selectedRates);
+        Mockito.when(dailyRatesFacade.findRatesBetweenDates(startDate, endDate)).thenReturn(RatesOutputContentCreator.convert2CurrencyRate(selectedRates));
         List<RatesOutput> ratesOutputList = ratesService.ratesForDate(startDate, endDate, null);
         assertNotNull(ratesOutputList);
         assertEquals(0, ratesOutputList.size());
@@ -185,10 +186,10 @@ class RatesServiceTest {
 
     @Test
     void ratesForDate_invalid_dates(){
-        List<DailyRates> selectedRates = dailyRatesDb.subList(3,8);
-        LocalDate startDate = selectedRates.stream().map(DailyRates::getRatesDate).min(LocalDate::compareTo).orElse(null);
+        List<RatesOutput> selectedRates = dailyRatesDb.subList(3,8);
+        LocalDate startDate = selectedRates.stream().map(RatesOutput::getDate).min(LocalDate::compareTo).orElse(null);
         assertNotNull(startDate);
-        LocalDate endDate = selectedRates.stream().map(DailyRates::getRatesDate).max(LocalDate::compareTo).orElse(null);
+        LocalDate endDate = selectedRates.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(null);
         assertNotNull(endDate);
         Mockito.when(dailyRatesFacade.findRatesBetweenDates(endDate, startDate)).thenReturn(Collections.emptyList());
         List<RatesOutput> ratesOutputList = ratesService.ratesForDate(endDate, startDate);
@@ -196,7 +197,7 @@ class RatesServiceTest {
         assertEquals(0, ratesOutputList.size());
     }
 
-    private void compareRatesLists(List<DailyRates> sourceList, List<RatesOutput> targetList){
+    private void compareRatesLists(List<RatesOutput> sourceList, List<RatesOutput> targetList){
         assertEquals(sourceList.size(), targetList.size());
         for(int i=0; i < sourceList.size(); i++){
             compareRatesObjects(sourceList.get(i), targetList.get(i), null);
@@ -204,49 +205,49 @@ class RatesServiceTest {
 
     }
 
-    private void compareRatesLists(final List<DailyRates> sourceList, final List<RatesOutput> targetList, CurrencyType expectedCurrency){
-        final Map<LocalDate,DailyRates> sourceMap = sourceList.stream()
+    private void compareRatesLists(final List<RatesOutput> sourceList, final List<RatesOutput> targetList, CurrencyType expectedCurrency){
+        final Map<LocalDate,RatesOutput> sourceMap = sourceList.stream()
                 .filter(dr ->{
-                   return dr.getRates().stream().anyMatch(cr -> cr.getTargetCurrency() == expectedCurrency);
+                   return dr.getRates().containsKey(expectedCurrency);
                 })
-                .collect(Collectors.toMap(DailyRates::getRatesDate, Function.identity()));
+                .collect(Collectors.toMap(RatesOutput::getDate, Function.identity()));
         assertEquals(sourceMap.size(), targetList.size());
         targetList.forEach(ro -> {
             assertNotNull(ro);
             assertTrue(sourceMap.containsKey(ro.getDate()));
-            DailyRates dr = sourceMap.get(ro.getDate());
+            RatesOutput dr = sourceMap.get(ro.getDate());
             assertNotNull(dr);
             compareRatesObjects(dr, ro, expectedCurrency);
         });
 
     }
 
-    private void compareRatesObjects(final DailyRates source, final RatesOutput target, CurrencyType expectedCurrency){
+    private void compareRatesObjects(final RatesOutput source, final RatesOutput target, CurrencyType expectedCurrency){
         assertNotNull(source);
         assertNotNull(target);
-        assertEquals(source.getRatesDate(), target.getDate());
-        assertEquals(source.getSourceCurrency(), target.getSource());
+        assertEquals(source.getDate(), target.getDate());
+        assertEquals(source.getSource(), target.getSource());
         assertNotNull(source.getRates());
         assertNotNull(target.getRates());
         assertNotEquals(0, source.getRates().size());
         assertNotEquals(0, target.getRates().size());
         if (expectedCurrency == null) {
             assertEquals(source.getRates().size(), target.getRates().size());
-            source.getRates().forEach(cr -> {
-               assertTrue(target.getRates().containsKey(cr.getTargetCurrency()));
-               BigDecimal rateValue = target.getRates().get(cr.getTargetCurrency());
+            source.getRates().entrySet().forEach(cr -> {
+               assertTrue(target.getRates().containsKey(cr.getKey()));
+               BigDecimal rateValue = target.getRates().get(cr.getKey());
                assertNotNull(rateValue);
-               assertEquals(cr.getRateValue(), rateValue);
+               assertEquals(cr.getValue(), rateValue);
             });
         } else {
 
             assertEquals(1, target.getRates().size());
-            CurrencyRate cr = source.getRates().stream().filter(c -> c.getTargetCurrency() == expectedCurrency).findFirst().orElse(null);
-            assertNotNull(cr);
+            BigDecimal sourceValue = source.getRates().get(expectedCurrency);
+            assertNotNull(sourceValue);
             assertTrue(target.getRates().containsKey(expectedCurrency));
             BigDecimal rateValue = target.getRates().get(expectedCurrency);
             assertNotNull(rateValue);
-            assertEquals(cr.getRateValue(), rateValue);
+            assertEquals(sourceValue, rateValue);
         }
     }
 

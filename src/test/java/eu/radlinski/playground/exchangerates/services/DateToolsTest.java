@@ -16,7 +16,7 @@ class DateToolsTest {
     @Test
     void firstDayOfMonth_valid_date() {
        LocalDate date = LocalDate.of(2020,4,15);
-       LocalDate firstDayDate = LocalDate.of(2020,4,1);
+       LocalDate firstDayDate = date.getDayOfMonth() > 1 ? LocalDate.of(date.getYear(),date.getMonth(),1) : date.minusMonths(1);
        assertEquals(firstDayDate, DateTools.firstDayOfMonth(date));
     }
 
@@ -29,13 +29,20 @@ class DateToolsTest {
     @Test
     void firstDayOfMonthNow() {
         LocalDate date = LocalDate.now();
-        LocalDate firstDayDate = LocalDate.of(date.getYear(),date.getMonth(),1);
+        LocalDate firstDayDate = date.getDayOfMonth() > 1 ? LocalDate.of(date.getYear(),date.getMonth(),1) : date.minusMonths(1);
+        assertEquals(firstDayDate, DateTools.firstDayOfMonthNow());
+    }
+
+    @Test
+    void firstDayOfMonthNow_first_day() {
+        LocalDate date = LocalDate.now();
+        LocalDate firstDayDate = date.getDayOfMonth() > 1 ? LocalDate.of(date.getYear(), date.getMonth(),1) : date.minusMonths(1);
         assertEquals(firstDayDate, DateTools.firstDayOfMonthNow());
     }
 
     @Test
     void generateLastYearFirstDays_valid_date() {
-        LocalDate date = LocalDate.now();
+        LocalDate date = LocalDate.of(2021, 04,16);;
         LocalDate firstDayDate = LocalDate.of(date.getYear(),date.getMonth(),1);
         List<LocalDate> yearDates = DateTools.generateLastYearFirstDays(date);
         assertNotNull(yearDates);
@@ -55,6 +62,7 @@ class DateToolsTest {
         }
     }
 
+
     @Test
     void generateLastYearFirstDays_invalid_date() {
         List<LocalDate> yearDates = DateTools.generateLastYearFirstDays(null);
@@ -67,7 +75,7 @@ class DateToolsTest {
     @Test
     void generateLastYearFirstDaysForNow() {
         LocalDate date = LocalDate.now();
-        LocalDate firstDayDate = LocalDate.of(date.getYear(),date.getMonth(),1);
+        LocalDate firstDayDate = date.getDayOfMonth() > 1 ? LocalDate.of(date.getYear(),date.getMonth(),1) : date.minusMonths(1);
         List<LocalDate> validYearDates = DateTools.generateLastYearFirstDays(firstDayDate);
         List<LocalDate> yearDates = DateTools.generateLastYearFirstDaysForNow();
         assertEquals(validYearDates, yearDates);

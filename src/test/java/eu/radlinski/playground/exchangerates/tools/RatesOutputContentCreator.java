@@ -1,5 +1,6 @@
 package eu.radlinski.playground.exchangerates.tools;
 
+import eu.radlinski.playground.exchangerates.model.CurrencyRate;
 import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.services.DateTools;
 import eu.radlinski.playground.exchangerates.services.RatesOutput;
@@ -7,6 +8,7 @@ import eu.radlinski.playground.exchangerates.services.RatesOutput;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Kuba Radliński <kuba at radlinski.eu>
@@ -26,7 +28,20 @@ public class RatesOutputContentCreator {
             rates.add(dailyRates);
             movingDate = movingDate.minusMonths(1);
         }
+        rates.sort((o1, o2) -> o2.getDate()
+                .compareTo(o1.getDate()));
         return rates;
     }
+
+    public static List<CurrencyRate> convert2CurrencyRate(final List<RatesOutput> rates){
+        return rates.stream().map(RatesOutputContentCreator::fromDailyRates).collect(ArrayList::new, List::addAll, List::addAll);
+    }
+
+    private static List<CurrencyRate> fromDailyRates(final RatesOutput ratesOutput){
+        return ratesOutput.getRates().entrySet().stream()
+                .map(e -> new CurrencyRate(ratesOutput.getDate(), ratesOutput.getSource(), e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+    }
+
 
 }

@@ -1,11 +1,15 @@
 package eu.radlinski.playground.exchangerates.services;
 
 import eu.radlinski.playground.exchangerates.model.CurrencyRate;
-import eu.radlinski.playground.exchangerates.model.DailyRates;
+import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.repository.DailyRatesRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -14,17 +18,44 @@ import java.util.stream.Collectors;
 @Service
 public class RatesStorageService {
 
-    private DailyRatesRepository ratesFacade;
+    private final DailyRatesRepository ratesRepository;
 
-    public void storeData(List<RatesOutput> rates){
-        List<DailyRates> newData = rates.stream().map(this::fromRatesOutput).collect(Collectors.toList());
-        ratesFacade.saveAll(newData);
+    @Autowired
+    public RatesStorageService(DailyRatesRepository ratesRepository) {
+        this.ratesRepository = ratesRepository;
     }
 
-    private DailyRates fromRatesOutput(RatesOutput ratesOutput){
-        DailyRates dailyRates = new DailyRates(ratesOutput.getDate(), ratesOutput.getSource());
-        List<CurrencyRate> currencyRates = ratesOutput.getRates().entrySet().stream().map(r -> new CurrencyRate(dailyRates, r.getKey(), r.getValue())).collect(Collectors.toList());
-        dailyRates.setRates(currencyRates);
-        return dailyRates;
+    public void storeData(final List<RatesOutput> rates){
+        List<CurrencyRate> newData = rates.stream().map(this::fromDailyRates).collect(ArrayList::new, List::addAll, List::addAll);
+        ratesRepository.saveAll(newData);
+    }
+
+    private List<CurrencyRate> fromDailyRates(final RatesOutput ratesOutput){
+        return ratesOutput.getRates().entrySet().stream()
+                .map(e -> new CurrencyRate(ratesOutput.getDate(), ratesOutput.getSource(), e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+    }
+
+
+    public void storeTestData(){
+        List<RatesOutput> newData = provideRatesOutputDb(LocalDate.now());
+        storeData(newData);
+    }
+
+    private final static int DATABASE_SIZE = 24;
+    @Value("${exchange-rates.import-currencies}")
+    public  Set<CurrencyType> AVAILABLE_CURRENCIES;
+
+    public  List<RatesOutput> provideRatesOutputDb(final LocalDate date){
+        LocalDate movingDate = DateTools.firstDayOfMonth(date);
+        List<RatesOutput> rates = new ArrayList<>();
+        for(int i=0; i<DATABASE_SIZE; i++){
+            Map<CurrencyType, BigDecimal> ratesMap = new EnumMap<>(CurrencyType.class);
+            AVAILABLE_CURRENCIES.forEach(ct -> ratesMap.put(ct, BigDecimal.valueOf(Math.random())));
+            RatesOutput dailyRates = new RatesOutput(movingDate,CurrencyType.EUR, ratesMap);
+            rates.add(dailyRates);
+            movingDate = movingDate.minusMonths(1);
+        }
+        return rates;
     }
 }

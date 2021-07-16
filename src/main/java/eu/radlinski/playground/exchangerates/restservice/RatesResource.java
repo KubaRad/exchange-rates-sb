@@ -1,11 +1,11 @@
 package eu.radlinski.playground.exchangerates.restservice;
 
 
-import eu.radlinski.playground.exchangerates.config.AvailableCurrencyProvider;
 import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.services.RatesOutput;
 import eu.radlinski.playground.exchangerates.services.RatesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/rates")
 public class RatesResource {
 
-    private final AvailableCurrencyProvider availableCurrencyProvider;
+    public final  Set<CurrencyType> availableCurrencies;
 
     private final RatesService ratesService;
 
     @Autowired
-    public RatesResource(AvailableCurrencyProvider availableCurrencyProvider, RatesService ratesService) {
-        this.availableCurrencyProvider = availableCurrencyProvider;
+    public RatesResource(@Value("${exchange-rates.import-currencies}") Set<CurrencyType> availableCurrencies, RatesService ratesService) {
+        this.availableCurrencies = availableCurrencies;
         this.ratesService = ratesService;
     }
 
@@ -41,8 +41,8 @@ public class RatesResource {
                     .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, null, null));
         }
 
-        if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-            throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
+        if(!availableCurrencies.contains(targetCurrency)) {
+            throw new CurrencyNotStoredException(targetCurrency, availableCurrencies);
         }
         return ratesService.ratesForDate(selectedDate, targetCurrency)
                 .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, null, null));
@@ -56,8 +56,8 @@ public class RatesResource {
         }
 
         if(startDate == null && endDate == null ){
-            if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-                throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
+            if(!availableCurrencies.contains(targetCurrency)) {
+                throw new CurrencyNotStoredException(targetCurrency, availableCurrencies);
             }
             return ratesService.lastYearRates(targetCurrency);
         }
@@ -67,8 +67,8 @@ public class RatesResource {
         }
 
         if(startDate != null && endDate != null){
-            if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-                throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
+            if(!availableCurrencies.contains(targetCurrency)) {
+                throw new CurrencyNotStoredException(targetCurrency, availableCurrencies);
             }
             return ratesService.ratesForDate(startDate, endDate, targetCurrency);
         }

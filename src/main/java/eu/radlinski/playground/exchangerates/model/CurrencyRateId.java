@@ -1,6 +1,7 @@
 package eu.radlinski.playground.exchangerates.model;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -8,26 +9,29 @@ import java.util.Objects;
  */
 
 public class CurrencyRateId implements Serializable {
+    private LocalDate rateDate;
+    private CurrencyType sourceCurrency;
     private CurrencyType targetCurrency;
-    private DailyRates dailyRates;
+
+    public LocalDate getRateDate() {
+        return rateDate;
+    }
+
+    public CurrencyType getSourceCurrency() {
+        return sourceCurrency;
+    }
 
     public CurrencyType getTargetCurrency() {
         return targetCurrency;
     }
 
-    public DailyRates getDailyRates() {
-        return dailyRates;
-    }
-
-    /*
-     * For JPA spec
-     */
     public CurrencyRateId() {
     }
 
-    public CurrencyRateId(CurrencyType targetCurrency, DailyRates dailyRates) {
+    public CurrencyRateId(LocalDate rateDate, CurrencyType sourceCurrency, CurrencyType targetCurrency) {
+        this.rateDate = rateDate;
+        this.sourceCurrency = sourceCurrency;
         this.targetCurrency = targetCurrency;
-        this.dailyRates = dailyRates;
     }
 
     @Override
@@ -35,11 +39,11 @@ public class CurrencyRateId implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CurrencyRateId that = (CurrencyRateId) o;
-        return targetCurrency == that.targetCurrency && Objects.equals(dailyRates, that.dailyRates);
+        return Objects.equals(rateDate, that.rateDate) && sourceCurrency == that.sourceCurrency && targetCurrency == that.targetCurrency;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(targetCurrency, dailyRates);
+        return Objects.hash(rateDate, sourceCurrency, targetCurrency);
     }
 }

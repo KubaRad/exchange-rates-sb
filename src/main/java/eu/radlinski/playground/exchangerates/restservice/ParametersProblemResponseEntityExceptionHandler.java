@@ -22,13 +22,17 @@ public class ParametersProblemResponseEntityExceptionHandler extends ResponseEnt
             RatesResource.OnlyOneDateParameterException.class,
             MethodArgumentTypeMismatchException.class,
             CurrencyTypeConverter.CurrencyTypeConversionException.class,
-            LocalDateConverter.LocalDateConversionException.class
+            LocalDateConverter.LocalDateConversionException.class,
+            InitDatabaseResource.ExchangeRatesCommunicationException.class
     })
     protected ResponseEntity<Object> handleConflict(
             RuntimeException ex, WebRequest request) {
         String msg;
         if(ex instanceof MethodArgumentTypeMismatchException){
             if(ex.getCause() instanceof ConversionFailedException){
+                /*
+                 * Dive into exception chain to get messages from custom converters
+                 */
                 msg = ex.getCause().getCause() != null ? ex.getCause().getCause().getMessage() : ex.getCause().getMessage();
             } else {
                 msg=ex.getMessage();
@@ -36,8 +40,9 @@ public class ParametersProblemResponseEntityExceptionHandler extends ResponseEnt
         } else {
             msg = ex.getMessage();
         }
+        HttpStatus resultStatus = ex instanceof InitDatabaseResource.ExchangeRatesCommunicationException ? HttpStatus.INTERNAL_SERVER_ERROR : HttpStatus.BAD_REQUEST;
         ErrorDescription bodyOfResponse = new ErrorDescription(msg);
         return handleExceptionInternal(ex, bodyOfResponse,
-                new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+                new HttpHeaders(), resultStatus, request);
     }
 }

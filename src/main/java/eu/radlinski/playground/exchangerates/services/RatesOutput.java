@@ -4,6 +4,7 @@ import eu.radlinski.playground.exchangerates.model.CurrencyType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -24,7 +25,7 @@ public class RatesOutput {
     }
 
     public Map<CurrencyType, BigDecimal> getRates() {
-        return rates;
+        return Collections.unmodifiableMap(rates);
     }
 
     public RatesOutput(LocalDate ratingDate, CurrencyType source, Map<CurrencyType, BigDecimal> rates) {
@@ -32,4 +33,6 @@ public class RatesOutput {
         this.source = source;
         this.rates = rates;
     }
+
+
 }

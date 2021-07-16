@@ -1,6 +1,5 @@
 package eu.radlinski.playground.exchangerates.restservice;
 
-import eu.radlinski.playground.exchangerates.config.AvailableCurrencyProvider;
 import eu.radlinski.playground.exchangerates.model.CurrencyType;
 import eu.radlinski.playground.exchangerates.services.RatesOutput;
 import eu.radlinski.playground.exchangerates.services.RatesService;
@@ -13,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -33,9 +33,6 @@ class RatesResourceTest {
     private final Random rand = new Random();
 
     @Mock
-    AvailableCurrencyProvider availableCurrencyProvider;
-
-    @Mock
     RatesService ratesService;
 
     @InjectMocks
@@ -44,12 +41,12 @@ class RatesResourceTest {
     @BeforeEach
     void initEach(){
         ratesOutputDb = RatesOutputContentCreator.provideRatesOutputDb(LocalDate.now());
+        ReflectionTestUtils.setField(ratesResource, "availableCurrencies", RatesOutputContentCreator.AVAILABLE_CURRENCIES);
     }
 
     @Test
 
     void getRatesForDate_invalid_currency() {
-        Mockito.when(availableCurrencyProvider.availableCurrencies()).thenReturn(RatesOutputContentCreator.AVAILABLE_CURRENCIES);
         Exception exception = assertThrows(RuntimeException.class, () -> {
             ratesResource.getRatesForDate(ratesOutputDb.get(0).getDate(), CurrencyType.PLN);
         });
@@ -71,7 +68,7 @@ class RatesResourceTest {
         CurrencyType validCurrency = CurrencyType.USD;
         RatesOutput expected = createOutputWithSelectedCurrency(ratesOutputDb.get(random(0, ratesOutputDb.size()-1)), validCurrency);
         Mockito.when(ratesService.ratesForDate(expected.getDate(), validCurrency)).thenReturn(Optional.of(expected));
-        Mockito.when(availableCurrencyProvider.availableCurrencies()).thenReturn(RatesOutputContentCreator.AVAILABLE_CURRENCIES);
+        ReflectionTestUtils.setField(ratesResource, "availableCurrencies", RatesOutputContentCreator.AVAILABLE_CURRENCIES);
         RatesOutput response = ratesResource.getRatesForDate(expected.getDate(), validCurrency);
         assertNotNull(response);
         assertEquals(expected, response);
@@ -121,7 +118,6 @@ class RatesResourceTest {
                 .map(ro -> createOutputWithSelectedCurrency(ro, validCurrency))
                 .collect(Collectors.toList());
         Mockito.when(ratesService.lastYearRates(validCurrency)).thenReturn(expected);
-        Mockito.when(availableCurrencyProvider.availableCurrencies()).thenReturn(RatesOutputContentCreator.AVAILABLE_CURRENCIES);
         List<RatesOutput> response = ratesResource.getRatesForDates(null, null, validCurrency);
         assertNotNull(response);
         assertEquals(12, response.size());
@@ -171,7 +167,6 @@ class RatesResourceTest {
         LocalDate endDate = expected.stream().map(RatesOutput::getDate).max(LocalDate::compareTo).orElse(null);
         assertNotNull(startDate);
         Mockito.when(ratesService.ratesForDate(startDate, endDate, validCurrency)).thenReturn(expected);
-        Mockito.when(availableCurrencyProvider.availableCurrencies()).thenReturn(RatesOutputContentCreator.AVAILABLE_CURRENCIES);
         List<RatesOutput> response = ratesResource.getRatesForDates(startDate, endDate, validCurrency);
         assertNotNull(response);
         assertEquals(expected.size(), response.size());

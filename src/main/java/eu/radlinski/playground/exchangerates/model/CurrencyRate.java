@@ -3,36 +3,54 @@ package eu.radlinski.playground.exchangerates.model;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * @author Kuba Radliński <kuba at radlinski.eu>
  */
 
-@Entity(name = "currency_rate")
+@Entity()
+@Table(name = "currency_rate")
+@NamedQueries({
+        @NamedQuery(
+                name="CurrencyRate.findRatesBetweenDates",
+                query="SELECT r from CurrencyRate r  WHERE r.rateDate >= :startDate AND r.rateDate <= :endDate ")
+})
+
 @IdClass(CurrencyRateId.class)
 public class CurrencyRate {
     @Id
-    @Enumerated(EnumType.STRING)
-    private CurrencyType targetCurrency;
+    @Column(name = "rate_date")
+    @NotNull
+    private LocalDate rateDate;
 
     @Id
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "daily_rates_rates_date", referencedColumnName = "rates_date"),
-            @JoinColumn(name = "daily_rates_source_currency", referencedColumnName = "source_currency"),
-    })
-    private DailyRates dailyRates;
+    @Column(name = "source_currency")
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    private CurrencyType sourceCurrency;
 
-    @Column(name = "rate_value", precision = 9, scale = 6)
+    @Id
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_currency")
+    @NotNull
+    private CurrencyType targetCurrency;
+
+    @Column(name = "rate_value", precision = 10, scale = 6)
     @NotNull
     private BigDecimal rateValue;
 
-    public CurrencyType getTargetCurrency() {
-        return targetCurrency;
+
+    public LocalDate getRateDate() {
+        return rateDate;
     }
 
-    public DailyRates getDailyRates() {
-        return dailyRates;
+    public CurrencyType getSourceCurrency() {
+        return sourceCurrency;
+    }
+
+    public CurrencyType getTargetCurrency() {
+        return targetCurrency;
     }
 
     public BigDecimal getRateValue() {
@@ -42,9 +60,10 @@ public class CurrencyRate {
     public CurrencyRate() {
     }
 
-    public CurrencyRate(DailyRates dailyRates, CurrencyType targetCurrency, BigDecimal rateValue) {
+    public CurrencyRate(LocalDate rateDate, CurrencyType sourceCurrency, CurrencyType targetCurrency, BigDecimal rateValue) {
+        this.rateDate = rateDate;
+        this.sourceCurrency = sourceCurrency;
         this.targetCurrency = targetCurrency;
-        this.dailyRates = dailyRates;
         this.rateValue = rateValue;
     }
 }
