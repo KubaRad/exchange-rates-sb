@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +42,7 @@ public class RatesResource {
         }
 
         if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, currencyNotStoredExceptionMsg(targetCurrency), null);
+            throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
         }
         return ratesService.ratesForDate(selectedDate, targetCurrency)
                 .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, null, null));
@@ -56,7 +57,7 @@ public class RatesResource {
 
         if(startDate == null && endDate == null ){
             if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, currencyNotStoredExceptionMsg(targetCurrency), null);
+                throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
             }
             return ratesService.lastYearRates(targetCurrency);
         }
@@ -67,27 +68,29 @@ public class RatesResource {
 
         if(startDate != null && endDate != null){
             if(!availableCurrencyProvider.availableCurrencies().contains(targetCurrency)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, currencyNotStoredExceptionMsg(targetCurrency), null);
+                throw new CurrencyNotStoredException(targetCurrency, availableCurrencyProvider.availableCurrencies());
             }
             return ratesService.ratesForDate(startDate, endDate, targetCurrency);
         }
 
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, onlyOneDateParameterExceptionMsg(), null);
+        throw new OnlyOneDateParameterException();
     }
 
 
-    private String onlyOneDateParameterExceptionMsg(){
-        return "Both 'startDate' and 'endDate' parameters should be set to obtain rates in defined period";
+    public static class OnlyOneDateParameterException extends RuntimeException{
+        public OnlyOneDateParameterException() {
+            super("Both 'startDate' and 'endDate' parameters should be set to obtain rates in defined period");
+        }
     }
 
-    private String currencyNotStoredExceptionMsg(CurrencyType receivedCurrency){
-        String currenciesString = availableCurrencyProvider.availableCurrencies().stream()
-                .map(CurrencyType::name)
-                .collect(Collectors.joining(","));
-        return MessageFormat.format("Stored exchange rates do not contains rate for currency: {0}. Available currencies: {1}"
-                , receivedCurrency
-                , currenciesString);
-
+    public static class CurrencyNotStoredException extends RuntimeException{
+        public CurrencyNotStoredException(final CurrencyType receivedCurrency, final Set<CurrencyType> availableCurrencies) {
+            super(MessageFormat.format("Stored exchange rates do not contains rate for currency: {0}. Available currencies: {1}"
+                    , receivedCurrency
+                    , availableCurrencies.stream()
+                            .map(CurrencyType::name)
+                            .collect(Collectors.joining(","))));
+        }
     }
 
 }
