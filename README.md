@@ -10,11 +10,11 @@ Initially only three configuration variables should be set:
 
 2. exchangeratesapi.io URI
 
-`exchange-rates.exchangeratesapiio-uri=http://api.exchangeratesapi.io`
+`exchange-rates.exchangeratesapi-io-api-key=http://api.exchangeratesapi.io`
 
 3. exchangeratesapi.io API_KEY
 
-`exchange-rates.exchangeratesapiio-api-key=API_KEY(from your plan)`
+`exchange-rates.exchangeratesapi-io-uri=API_KEY(from your plan)`
 
 
 ### How to compile and run
