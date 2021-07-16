@@ -9,6 +9,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,18 +35,17 @@ public class ExchangeRatesApiService {
         this.webClient = webClientBuilder.baseUrl(exchangeratesUri).build();
     }
 
-    public ExchangeRatesData getHistoricalRates(LocalDate date){
+    public Optional<ExchangeRatesData> getHistoricalRates(LocalDate date){
         String currenciesString = availableCurrencies.stream()
                 .map(CurrencyType::name)
                 .collect(Collectors.joining(","));
-        return webClient.get().uri(uriBuilder -> uriBuilder
+        return  webClient.get().uri(uriBuilder -> uriBuilder
                 .path("/v1/{ratesDate}")
                 .queryParam("access_key", exchangeratesApiKey)
                 .queryParam("symbols", currenciesString)
                 .build(date))
                 .retrieve()
                 .bodyToMono(ExchangeRatesData.class)
-                .blockOptional(Duration.ofMillis(1000))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, null, null));
+                .blockOptional();
     }
 }

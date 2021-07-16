@@ -15,10 +15,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -71,16 +73,28 @@ public class InitDatabaseResource {
         List<RatesOutput> rates = new ArrayList<>();
         Set<String> errors = new HashSet<>();
         List<LocalDate> lastYear = DateTools.generateLastYearFirstDaysForNow();
-        lastYear.forEach(date -> {
-             try{
-                 ExchangeRatesData received = ratesApiService.getHistoricalRates(date);
-                 fromExchangeratesData(received).ifPresent(rates::add);
-             } catch (Exception e){
-                 errors.add(e.getLocalizedMessage());
-             }
-         });
+        boolean generalClientException = false;
+        for(LocalDate date:lastYear){
+            try{
+                ratesApiService.getHistoricalRates(date).ifPresentOrElse(hr -> {
+                    fromExchangeratesData(hr).ifPresent(rates::add);
+                }, () -> {
+                    errors.add("Client process returned empty value");
+                });
+            } catch (Exception e){
+                errors.add(e.getLocalizedMessage());
+                if(!(e instanceof WebClientResponseException.NotFound)){
+                    /*
+                     * General error. Probably it is impossible to fulfill request in reasonable time
+                     */
+                    generalClientException = true;
+                    break;
+                }
+            }
 
-         if(rates.isEmpty()){
+        }
+
+         if(rates.isEmpty() || generalClientException){
              throw new ExchangeRatesCommunicationException(errors);
          }
          ratesStorageService.storeData(rates);
